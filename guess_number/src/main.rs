@@ -11,17 +11,18 @@ fn main() {
     
     let myans = rand::thread_rng().gen_range(sn, en);
     
-    loop {
+    loop { // 無窮迴圈
         println!("Come on! enter a number between({}~{})", sn, en);
         
-        let mut guess = String::new(); // mutable string
+        let mut guess = String::new(); // mutable string;(宣告)
         
+        // 輸入字串
         io::stdin().read_line(&mut guess)
             .expect("Failed to read line.");
         
         println!("You guess: {}", guess);
 
-        //Parse unsigned integer
+        // 轉換型別, 並用match處理Result回傳值
         let guess: u32 = match guess.trim().parse() 
         {
             Ok(num) => num,
