@@ -6,7 +6,7 @@ use std::cmp::Ordering;
 
 fn main() {
     let sn = 1;
-    let en = 9;
+    let en = 9999;
     println!("Welcome! Guess number");
     
     let myans = rand::thread_rng().gen_range(sn, en);
