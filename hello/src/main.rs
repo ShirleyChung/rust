@@ -1,9 +1,15 @@
+extern crate mytool;
+
 struct Circle
 {
 	radius: f64,
 }
 
-impl Circle
+trait Shape {
+	fn area(&self)->f64;
+}
+
+impl Shape for Circle
 {
 	fn area(&self)->f64{
 		std::f64::consts::PI*self.radius*self.radius
@@ -20,8 +26,9 @@ fn main(){
 	let c: Circle = Circle{
 		radius:10.0,
 	};
+	let n = 12;
 	for m in &months
 	{
-		println!("=>{0}, {1}",m, c.area());
+		println!("=>{}, {}, fab({})={}",m, c.area(), n, mytool::fabonicii(n));
 	}
 }
