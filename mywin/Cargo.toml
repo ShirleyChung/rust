@@ -1,0 +1,7 @@
+[package]
+name = "mywin"
+version = "0.1.0"
+authors = ["ShirleyChung <jonesr_tw@yahoo.com.tw>"]
+
+[dependencies]
+winit = "0.16.2"
