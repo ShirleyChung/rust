@@ -1,0 +1,6 @@
+[package]
+name = "readf"
+version = "0.1.0"
+authors = ["ShirleyChung <jonesr_tw@yahoo.com.tw>"]
+
+[dependencies]
