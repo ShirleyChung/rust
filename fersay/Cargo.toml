@@ -1,0 +1,8 @@
+[package]
+name = "fersay"
+version = "0.1.0"
+authors = ["ShirleyChung <jonesr_tw@yahoo.com.tw>"]
+edition = "2018"
+
+[dependencies]
+ferris-says = "0.1"
