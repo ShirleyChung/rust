@@ -1,5 +1,6 @@
 use std::net::{TcpListener, TcpStream};
 use std::io;
+use std::io::prelude::*;
 use std::env;
 
 /// 一個Client的角色
@@ -33,7 +34,9 @@ impl Server {
 		Server { port: p }
 	}
 	/// 處理進來的client
-	fn handle_client(_stream: TcpStream) -> std::io::Result<()> {
+	fn handle_client(mut stream: TcpStream) -> std::io::Result<()> {
+		stream.read(&mut [0; 128]);
+		stream.write(&[1]);
 		Ok(())
 	}
 	/// 開始監聽
@@ -52,8 +55,8 @@ fn main() -> io::Result<()> {
 
 	let args: Vec<String> = env::args().collect();
 	
-	if args.len() > 2 {
-		let target = &args[1];
+	if args.len() > 1 {
+		let target = &args[0];
 		if let Some(_c) = target.find(':') {
 			let echo_cli = Client::new(&target);
 			println!("connect to {}", target);
