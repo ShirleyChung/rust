@@ -1,0 +1,6 @@
+[package]
+name = "chatserv"
+version = "0.1.0"
+authors = ["Shirley Chung <jonesr_tw@yahoo.com.tw>"]
+
+[dependencies]
