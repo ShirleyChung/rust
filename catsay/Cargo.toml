@@ -1,8 +1,10 @@
 [package]
 name = "catsay"
 version = "0.1.0"
-authors = ["鐘妘甄 <shirley@mail.kway.com.tw>"]
+authors = ["ShirleyChung <jonesr_tw@yahoo.com.tw>"]
 edition = "2018"
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 [dependencies]
-structopt = "0.2.15"
+structopt = "*"

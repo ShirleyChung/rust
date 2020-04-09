@@ -13,7 +13,7 @@ fn say_hello(msg: &String) {
 	println!("  \\");
 	println!("     /\\_/\\");
 	println!("    ( o o )");
-	println!("     =(I)=");
+	println!("    =( I )=");
 }
 
 fn main() {
