@@ -31,5 +31,15 @@ fn main() {
 	if message == "woof" {
 		eprintln!("a cat shouldn't bark like a dog!");
 	}
-	say_hello(&message, options.dead);
+	match &options.catfile {
+		Some(path) => {
+			let cat_template = std::fs::read_to_string(path)
+			.expect(&format!("couldn't read file {:?}", path));
+			println!("{}", message);
+			println!("{}", &cat_template);
+		},
+		None => {
+			say_hello(&message, options.dead);
+		}
+	}
 }
