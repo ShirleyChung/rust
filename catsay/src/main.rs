@@ -25,7 +25,7 @@ fn say_hello(msg: &String, dead: bool) {
 	println!("    =( I )=");
 }
 
-fn main() {
+fn main() -> std::io::Result<()> {
 	let options = Options::from_args();
 	let message = options.message;
 	if message == "woof" {
@@ -33,8 +33,7 @@ fn main() {
 	}
 	match &options.catfile {
 		Some(path) => {
-			let cat_template = std::fs::read_to_string(path)
-			.expect(&format!("couldn't read file {:?}", path));
+			let cat_template = std::fs::read_to_string(path)?;
 			println!("{}", message);
 			println!("{}", &cat_template);
 		},
@@ -42,4 +41,5 @@ fn main() {
 			say_hello(&message, options.dead);
 		}
 	}
+	Ok(())
 }
