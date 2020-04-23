@@ -1,6 +1,9 @@
 use structopt::StructOpt;
 use colored::*;
 
+mod test;
+use test::*;
+
 #[derive(StructOpt)]
 struct Options {
 #[structopt(default_value="I am rust meow~")]
@@ -23,6 +26,7 @@ fn say_hello(msg: &String, dead: bool) {
 	let eye = if dead { "x" } else { "o" };
 	println!("    ( {eye} {eye} )", eye=eye.red().bold());
 	println!("    =( I )=");
+	println!(" {0}+ {1} = {2}", 10, 20, do_plus(10, 20));
 }
 
 fn main() -> std::io::Result<()> {
