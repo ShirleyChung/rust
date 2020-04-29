@@ -1,5 +1,5 @@
 [package]
-name = "SC"
+name = "sc"
 version = "0.1.0"
 authors = ["ShirleyChung <jonesr_tw@yahoo.com.tw>"]
 edition = "2018"

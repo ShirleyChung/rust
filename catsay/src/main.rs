@@ -1,8 +1,9 @@
 use structopt::StructOpt;
 use colored::*;
+use std::error;
 
 mod test;
-use test::*;
+use crate::test::*;
 
 #[derive(StructOpt)]
 struct Options {
@@ -26,10 +27,10 @@ fn say_hello(msg: &String, dead: bool) {
 	let eye = if dead { "x" } else { "o" };
 	println!("    ( {eye} {eye} )", eye=eye.red().bold());
 	println!("    =( I )=");
-	println!(" {0}+ {1} = {2}", 10, 20, do_plus(10, 20));
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> std::result::Result<(), Box<dyn error::Error>> {
+say_some();
 	let options = Options::from_args();
 	let message = options.message;
 	if message == "woof" {
