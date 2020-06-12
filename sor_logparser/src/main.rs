@@ -1,5 +1,6 @@
 use structopt::StructOpt;
 use std::io::*;
+use std::io::{BufRead, BufReader};
 //use std::io::prelude::*;
 use std::fs::File;
 
@@ -10,12 +11,15 @@ struct Options {
 
 fn main() -> Result<()> {
 	let options    = Options::from_args();
-	let mut buffer = Vec::new();
 
-	let mut f = File::open(options.filepath)?;
-	f.read_to_end(&mut buffer)?;
+	let f = File::open(options.filepath)?;
+	let reader= BufReader::new(f);
 	
-	println!("{:?}", buffer);
-	
+	for line in reader.lines() {
+		match line {
+			Ok(ok_line)=> println!("{:?}", ok_line),
+			_ => continue,
+		}
+	}
 	Ok(())
 }
