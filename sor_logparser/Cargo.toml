@@ -1,0 +1,8 @@
+[package]
+name = "sor_logparser"
+version = "0.1.0"
+authors = ["鐘妘甄 <shirley@mail.kway.com.tw>"]
+edition = "2018"
+
+[dependencies]
+structopt = "0.2.15"
