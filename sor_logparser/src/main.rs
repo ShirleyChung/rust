@@ -11,6 +11,8 @@ struct Options {
 	filepath: String, // Log檔路徑
 	#[structopt(short="o", long="ordno", default_value = "")]
 	ordno   : String,
+	#[structopt(short="t", long="table", default_value = "FrfOrd")]
+	table   : String,
 }
 
 struct Field {
@@ -20,18 +22,18 @@ struct Field {
 
 /// 儲存解析後的陣列
 struct Parser {
-	providers: HashMap<String, Vec<Field>>,
-	req_recs:  HashMap<String, Vec<String>>,
-	ord_recs:  HashMap<String, Vec<String>>,
+	rec_tables: HashMap<String, HashMap<String, Field>>,
+	req_recs:   HashMap<String, Vec<String>>,
+	ord_recs:   HashMap<String, Vec<String>>,
 }
 
 /// 陣列的操作函式
 impl Parser{
 	fn new()->Parser {
 		Parser{ 
-			providers:  HashMap::<String, Vec<Field>>::new(),
-			req_recs:   HashMap::<String, Vec<String>>::new(),
-			ord_recs:   HashMap::<String, Vec<String>>::new() 
+			rec_tables:  HashMap::<String, HashMap<String, Field>>::new(),
+			req_recs:    HashMap::<String, Vec<String>>::new(),
+			ord_recs:    HashMap::<String, Vec<String>>::new() 
 			}
 	}
 	/// 解析每一行的內容, 並儲存到HashMap
@@ -40,16 +42,16 @@ impl Parser{
 		if toks.len() > 3 {
 			let key = &toks[1];
 			if key == "-" {
-				// Provider的名稱, 例如 TwsNew
-				let provider_name = (&toks[2]).to_string();
-				if !self.providers.contains_key(&provider_name) {
+				// Provider table的名稱, 例如 TwsNew
+				let table_name = (&toks[2]).to_string();
+				if !self.rec_tables.contains_key(&table_name) {
 					// 建立Provider的陣列
-					let mut fields = Vec::<Field>::new();
+					let mut fields = HashMap::<String, Field>::new();
 					// 插入每個Provider的Field
 					for (idx, name) in toks.iter().enumerate() {
-						fields.push(Field{field_name: name.to_string(), field_index: idx as u32});
+						fields.insert(name.to_string(), Field{field_name: name.to_string(), field_index: idx as u32});
 					}
-					self.providers.insert(provider_name, fields);
+					self.rec_tables.insert(table_name, fields);
 				}
 			}
 			else if toks[0] == "Req" {
@@ -60,16 +62,32 @@ impl Parser{
 			}
 		}
 	}
+	
+	/// 以index, 找出rec中相等於target的rec
+	fn find_ord(&self, key_index: usize, target: &str) {
+		for (key, ord_vec) in &self.ord_recs {
+			if ord_vec[key_index] == target.to_string() {
+				println!("found key = {}, {:?}", key, ord_vec)
+			}
+		}
+	}
+	
 	/// 以委託書號為key, 找出req-ord
-	fn find_ordno(&self, _ordno: &str) -> String {
-		String::from("not found")
+	fn find_ordno(&self, table: &str, ordno: &str) -> String {
+		let result = String::from("end");
+		match self.rec_tables.get(table) {
+			Some(provider_vec) => self.find_ord(provider_vec["OrdNo"].field_index as usize, ordno),
+			_ => println!("{} NotFound", table),
+		}
+		
+		result
 	}
 }
 
 /// 使Parse類別能以println列印出來
 impl fmt::Display for Parser {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "prividers: {}, reqs: {}, ords: {}", self.providers.len(), self.req_recs.len(), self.ord_recs.len())
+		write!(f, "prividers: {}, reqs: {}, ords: {}", self.rec_tables.len(), self.req_recs.len(), self.ord_recs.len())
 	}
 }
 
@@ -92,7 +110,7 @@ fn main() -> Result<()> {
 	println!("parser: {}", parser);
 	
 	if !options.ordno.is_empty() {
-		println!("ord {} => {}", options.ordno, parser.find_ordno(&options.ordno));
+		println!("ord {} => {}", options.ordno, parser.find_ordno(&options.table, &options.ordno));
 	}
 	
 	Ok(())
