@@ -15,15 +15,27 @@ struct Options {
 }
 
 struct Field {
-	field_name  :String,
+//	field_name  :String,
 	field_index :usize,
+}
+
+struct Req {
+	req_recs: Vec<String>,
+	line    : String,
+	log     : String,
+}
+
+struct Ord {
+	ord_recs: Vec<String>,
+	line    : String,
+	log     : String,
 }
 
 /// 儲存解析後的陣列
 struct Parser {
 	rec_tables: HashMap<String, HashMap<String, Field>>,
-	req_recs:   HashMap<String, Vec<String>>,
-	ord_recs:   HashMap<String, Vec<String>>,
+	req_recs:   HashMap<String, Req>,
+	ord_recs:   HashMap<String, Ord>,
 }
 
 /// 陣列的操作函式
@@ -31,8 +43,8 @@ impl Parser{
 	fn new()->Parser {
 		Parser{ 
 			rec_tables:  HashMap::<String, HashMap<String, Field>>::new(),
-			req_recs:    HashMap::<String, Vec<String>>::new(),
-			ord_recs:    HashMap::<String, Vec<String>>::new() 
+			req_recs:    HashMap::<String, Req>::new(),
+			ord_recs:    HashMap::<String, Ord>::new() 
 			}
 	}
 	/// 解析每一行的內容, 並儲存到HashMap
@@ -48,25 +60,25 @@ impl Parser{
 					let mut fields = HashMap::<String, Field>::new();
 					// 插入每個Provider的Field
 					for (idx, name) in toks.iter().enumerate() {
-						fields.insert(name.to_string(), Field{field_name: name.to_string(), field_index: idx});
+						fields.insert(name.to_string(), Field{/*field_name: name.to_string(),*/ field_index: idx});
 					}
 					self.rec_tables.insert(table_name, fields);
 				}
 			}
 			else if toks[0] == "Req" {
-				self.req_recs.insert((&toks[1]).to_string(), toks);
+				self.req_recs.insert((&toks[1]).to_string(), Req{req_recs: toks, line: line.to_string(), log: String::new()});
 			}
 			else if toks[0] == "Ord" {
-				self.ord_recs.insert((&toks[1]).to_string(), toks);
+				self.ord_recs.insert((&toks[1]).to_string(), Ord{ord_recs: toks, line: line.to_string(), log: String::new()});
 			}
 		}
 	}
 	
 	/// 以index, 找出rec中相等於target的rec
 	fn find_rec(&self, key_index: usize, target: &str) {
-		for (key, ord_vec) in &self.ord_recs {
-			if ord_vec[key_index] == target.to_string() {
-				println!("found key = {}, {:?}", key, ord_vec)
+		for (key, ords) in &self.ord_recs {
+			if ords.ord_recs[key_index] == target.to_string() {
+				println!("found key = {}, {}, {}", key, ords.line, ords.log)
 			}
 		}
 	}
@@ -104,11 +116,6 @@ fn main() -> Result<()> {
 	let f           = File::open(options.filepath)?;
 	let reader     = BufReader::new(f);
 	let mut parser = Parser::new();
-	let field_vec :Vec<String> = options.field.split(':').map(|s| s.to_string()).collect();
-	if field_vec.len() < 3 {
-		println!("please specify -f TableName:FieldName:Value");
-		return Ok(())
-	}
 		
 	for line in reader.lines() {
 		match line {
@@ -119,7 +126,12 @@ fn main() -> Result<()> {
 	
 	println!("parser: {}", parser);
 	
-	if !options.field.is_empty() {
+	let field_vec :Vec<String> = options.field.split(':').map(|s| s.to_string()).collect();
+	if field_vec.len() < 3 {
+		println!("please specify -f TableName:FieldName:Value");
+		return Ok(())
+	}
+	else {
 		println!("ord {} => {}", options.field, parser.find_by_field(&field_vec[0], &field_vec[1], &field_vec[2]));
 	}
 	
