@@ -9,15 +9,14 @@ use std::fmt;
 #[derive(StructOpt)]
 struct Options {
 	filepath: String, // Log檔路徑
-	#[structopt(short="o", long="ordno", default_value = "")]
-	ordno   : String,
-	#[structopt(short="t", long="table", default_value = "FrfOrd")]
-	table   : String,
+	#[structopt(short="f", long="field", default_value = "")]
+	/// 指定TableName:FieldName:SearchValue; 例如 -f TwsNew:SorRID:100001
+	field   : String,
 }
 
 struct Field {
-	field_name: String,
-	field_index:u32,
+	field_name  :String,
+	field_index :usize,
 }
 
 /// 儲存解析後的陣列
@@ -49,7 +48,7 @@ impl Parser{
 					let mut fields = HashMap::<String, Field>::new();
 					// 插入每個Provider的Field
 					for (idx, name) in toks.iter().enumerate() {
-						fields.insert(name.to_string(), Field{field_name: name.to_string(), field_index: idx as u32});
+						fields.insert(name.to_string(), Field{field_name: name.to_string(), field_index: idx});
 					}
 					self.rec_tables.insert(table_name, fields);
 				}
@@ -64,7 +63,7 @@ impl Parser{
 	}
 	
 	/// 以index, 找出rec中相等於target的rec
-	fn find_ord(&self, key_index: usize, target: &str) {
+	fn find_rec(&self, key_index: usize, target: &str) {
 		for (key, ord_vec) in &self.ord_recs {
 			if ord_vec[key_index] == target.to_string() {
 				println!("found key = {}, {:?}", key, ord_vec)
@@ -73,10 +72,16 @@ impl Parser{
 	}
 	
 	/// 以委託書號為key, 找出req-ord
-	fn find_ordno(&self, table: &str, ordno: &str) -> String {
+	fn find_by_field(&self, table: &str, field_name: &str, search_target: &str) -> String {
 		let result = String::from("end");
+
 		match self.rec_tables.get(table) {
-			Some(provider_vec) => self.find_ord(provider_vec["OrdNo"].field_index as usize, ordno),
+			Some(provider_vec) => {
+				match provider_vec.get(field_name){
+					Some(field) => self.find_rec(field.field_index, search_target),
+					_=> println!("{} doesn't exist", field_name),
+				}
+				},
 			_ => println!("{} NotFound", table),
 		}
 		
@@ -99,7 +104,12 @@ fn main() -> Result<()> {
 	let f           = File::open(options.filepath)?;
 	let reader     = BufReader::new(f);
 	let mut parser = Parser::new();
-	
+	let field_vec :Vec<String> = options.field.split(':').map(|s| s.to_string()).collect();
+	if field_vec.len() < 3 {
+		println!("please specify -f TableName:FieldName:Value");
+		return Ok(())
+	}
+		
 	for line in reader.lines() {
 		match line {
 			Ok(ok_line)=> parser.parse_line(&ok_line),
@@ -109,8 +119,8 @@ fn main() -> Result<()> {
 	
 	println!("parser: {}", parser);
 	
-	if !options.ordno.is_empty() {
-		println!("ord {} => {}", options.ordno, parser.find_ordno(&options.table, &options.ordno));
+	if !options.field.is_empty() {
+		println!("ord {} => {}", options.field, parser.find_by_field(&field_vec[0], &field_vec[1], &field_vec[2]));
 	}
 	
 	Ok(())
