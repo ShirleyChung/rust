@@ -38,12 +38,11 @@ impl TableRec {
 	}
 }
 
-type TableRecMap = HashMap<String, TableRec>;
-type ReqRecMap   = HashMap<String, Rec>;
-type OrdRecMap   = HashMap<String, LinkedList<Rec>>;
+type ReqRecMap   = HashMap<String, Rec>;            // ReqKey-Rec
+type OrdRecMap   = HashMap<String, LinkedList<Rec>>;// OrdKey-Rec
 
 struct OrderRec {
-	tables: TableRecMap,
+	table:  TableRec,
 	reqs:   ReqRecMap,
 	ords:   OrdRecMap,
 }
@@ -51,7 +50,7 @@ struct OrderRec {
 impl OrderRec {
 	fn new() -> OrderRec {
 		OrderRec {
-			tables: TableRecMap::new(), // 表格名-欄位-index
+			table : TableRec::new(), // 表格名-欄位-index
 			reqs  : ReqRecMap::new(),   // reqKey-一筆Req
 			ords  : OrdRecMap::new(),   // ordKey-一筆Ord
 		}
@@ -60,18 +59,10 @@ impl OrderRec {
 		let key = &toks[1];
 		let hdr = &toks[0];		
 		if key == "-" { // 沒有key值的，是表格
-			// Provider table的名稱, 例如 TwsNew
-			let table_name = (&toks[2]).to_string();
-			if !self.tables.contains_key(&table_name) {
-				// 建立Provider的陣列
-				let mut tablerec = TableRec::new();
-				// 插入每個Provider的Field
-				for (idx, name) in toks.iter().enumerate() {
-					tablerec.index.insert(name.to_string(), idx);
-				}
-				tablerec.recs = toks.to_vec();
-				self.tables.insert(table_name, tablerec);
+			for (idx, name) in toks.iter().enumerate() { // 插入每個Provider的Field
+				self.table.index.insert(name.to_string(), idx);
 			}
+			self.table.recs = toks.to_vec();
 		}
 		else if "Req" == hdr {  // 依key將記錄儲存到hashmap中
 			self.reqs.insert(key.to_string(), Rec{reqs_vec: toks.to_vec(), line: line.to_string(), log: String::new()});
@@ -85,9 +76,10 @@ impl OrderRec {
 		}
 	}
 	/// 以index, 找出ords中相等於target的rec
-	fn find_req(&self, table_name: &str, key_index: usize, target: &str) {
+	fn find_req(&self, key_index: usize, target: &str) {
+		println!("find req {}, index={} reqs:{}", target, key_index, self.reqs.len());
 		for (key, rec) in &self.reqs  {
-			if  rec.reqs_vec.len() < 3 || rec.reqs_vec[2] != table_name { // 表格名不同則跳過
+			if  rec.reqs_vec.len() < 3 {
 				continue;
 			}
 			if rec.reqs_vec.len() > key_index {
@@ -100,11 +92,11 @@ impl OrderRec {
 		}
 	}
 	/// 以index, 找出reqs中相等於target的rec
-	fn find_ord(&self, table_name: &str, key_index: usize, target: &str) {
-		for (key, list) in &self.ords  {
+	fn find_ord(&self, key_index: usize, target: &str) {
+		for (key, list) in &self.ords {
 			match list.front() {
 				Some(rec) => {
-					if  rec.reqs_vec.len() < 3 || rec.reqs_vec[2] != table_name { // 表格名不同則跳過
+					if  rec.reqs_vec.len() < 3 {
 						continue;
 					}
 					if rec.reqs_vec.len() > key_index {
@@ -120,63 +112,68 @@ impl OrderRec {
 		}
 	}
 
-	fn check_req_data(&self, table_name: &str, field_name: &str, search_target: &str) {
-		match self.tables.get(table_name) {
-			Some(table) => { // 表中，該欄位的index
-				match table.index.get(field_name){
-					Some(idx) => { 
-						if table.recs[0] == "Req" {
-							self.find_req(table_name, *idx, search_target);
-						}
-						else if table.recs[0] == "Ord" {
-							self.find_ord(table_name, *idx, search_target);							
-						}
-						else {
-							unimplemented!();
-						}
-					},
-					_=> println!("{} doesn't exist", field_name),
+	fn check_req_data(&self, field_name: &str, search_target: &str) {
+		println!("checking {}, {}", field_name, search_target);
+		match self.table.index.get(field_name) {
+			Some(idx) => { 
+				if self.table.recs[0] == "Req" {
+					self.find_req(*idx, search_target);
+				}
+				else if self.table.recs[0] == "Ord" {
+					self.find_ord(*idx, search_target);							
+				}
+				else {
+					unimplemented!();
 				}
 			},
-			_ => println!("{} NotFound", table_name),
+			_=> println!("{} doesn't exist", field_name),
 		}	
 	}
 }
 
 /// 儲存解析後的陣列
 struct Parser {
-	ord_recs :OrderRec,
+	ord_recs_map : HashMap<String, OrderRec>,
 }
 
 /// 陣列的操作函式
 impl Parser {
 	fn new()->Parser {
 		Parser{ 
-			ord_recs: OrderRec::new(),
-			}
+			ord_recs_map: HashMap::<String, OrderRec>::new(),
+		}
 	}
 
 	/// 解析每一行的內容, 並儲存到HashMap
 	fn parse_line(&mut self, line: &str) {
 		let toks : Vec<String> = line.to_string().split('\x01').map(|s| s.to_string()).collect();
 		if toks.len() > 3 {
-			self.ord_recs.insert_rec(toks, line);
+			let table_name = &toks[2].to_string();
+			match self.ord_recs_map.get_mut(table_name) {
+				Some(rec) => rec.insert_rec(toks, line),
+				_ => {
+					let mut ord_rec = OrderRec::new();
+					ord_rec.insert_rec(toks, line);
+					self.ord_recs_map.insert(table_name.to_string(), ord_rec);
+				},
+			}
 		}
 	}
 	
 	/// 輸入 表名/欄位名/值 來尋找目標
 	fn find_by_field(&mut self, table_name: &str, field_name: &str, search_target: &str) {
 		// 先找看看 Req表
-		self.ord_recs.check_req_data(table_name, field_name, search_target);
+		match self.ord_recs_map.get(table_name) {
+			Some(ordrec) => ordrec.check_req_data(field_name, search_target),
+			_=> println!("{} not found", table_name),
+		}
 	}
 }
 
 /// 使Parse類別能以println列印出來
 impl fmt::Display for Parser {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(f, "req prividers: {}, reqs: {}", 
-			self.ord_recs.tables.len(), 
-			self.ord_recs.reqs.len())
+		write!(f, "tables: {}", self.ord_recs_map.len())
 	}
 }
 
