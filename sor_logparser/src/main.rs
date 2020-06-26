@@ -27,6 +27,7 @@ struct Rec {
 impl Rec {
 	fn print(&self) {
 		println!("{}", self.line);
+		println!("{}", self.log);
 	}
 }
 
@@ -122,15 +123,15 @@ impl OrderRec {
 		};
 	}
 	/// 以index, 找出ords中相等於target的rec
-	fn find_req(&self, key_index: usize, target: &str) {
+	fn find_req(&self, table_name: &str, key_index: usize, target: &str) {
 		println!("find req {}, index={} ords:{}", target, key_index, self.ords.len());
 		for (key, rec) in &self.reqs  {
-			if  rec.reqs_vec.len() < 3 {
+			if  rec.reqs_vec.len() < 3 || rec.reqs_vec[2] != table_name {
 				continue;
 			}
 			if rec.reqs_vec.len() > key_index {
 				if rec.reqs_vec[key_index] == target.to_string() {
-					println!("found key = {}, {}, {}", key, rec.line, rec.log)
+					self.print_ord(&self.req2ord[key])
 				}
 			} else {
 				println!("line:{}, \n fields miss match.", rec.line);
@@ -138,11 +139,11 @@ impl OrderRec {
 		}
 	}
 	/// 以index, 找出reqs中相等於target的rec
-	fn find_ord(&self, key_index: usize, target: &str) {
+	fn find_ord(&self, table_name: &str, key_index: usize, target: &str) {
 		for (key, list) in &self.ords {
 			match list.back() {
 				Some(rec) => {
-					if  rec.reqs_vec.len() < 3 {
+					if  rec.reqs_vec.len() < 3 || rec.reqs_vec[2] != table_name {
 						continue;
 					}
 					if rec.reqs_vec.len() > key_index {
@@ -165,10 +166,10 @@ impl OrderRec {
 				match tabrec.index.get(field_name) {
 					Some(idx) => {
 						if tabrec.recs[0] == "Req" {
-							self.find_req(*idx, search_target);
+							self.find_req(table_name, *idx, search_target);
 						}
 						else if tabrec.recs[0] == "Ord" {
-							self.find_ord(*idx, search_target);							
+							self.find_ord(table_name, *idx, search_target);							
 						}
 						else {
 							println!("cannot find {}, {}", field_name, search_target);
