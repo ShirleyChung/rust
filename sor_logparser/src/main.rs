@@ -27,7 +27,9 @@ struct Rec {
 impl Rec {
 	fn print(&self) {
 		println!("{}", self.line);
-		println!("{}", self.log);
+		if !self.log.is_empty() {
+			println!("{}", self.log);
+		}
 	}
 }
 
@@ -66,11 +68,11 @@ impl OrderRec {
 			req2ord: HashMap::<String, String>::new(),
 		}
 	}
-	fn insert_rec(&mut self, toks: Vec<String>, line: &str ) {
+	fn insert_rec(&mut self, toks: Vec<String>, line: &str ) -> Option<&Rec> {
 		let key = &toks[1];
 		let hdr = &toks[0];	
 		if key == "-" { // 沒有key值的，是表格
-			let table_name = &toks[2];	
+			let table_name = &toks[2];
 			let mut tabrec = self.tables.entry(table_name.to_string()).or_insert(TableRec::new());
 			for (idx, name) in toks.iter().enumerate() { // 插入每個Provider的Field
 				tabrec.index.insert(name.to_string(), idx);
@@ -79,6 +81,7 @@ impl OrderRec {
 		}
 		else if "Req" == hdr {  // 依key將記錄儲存到hashmap中
 			self.reqs.insert(key.to_string(), Rec{reqs_vec: toks.to_vec(), line: line.to_string(), log: String::new()});
+			return Some(&self.reqs[key])
 		}
 		else if "Ord" == hdr {	
 			let rec = Rec{reqs_vec: toks.to_vec(), line: line.to_string(), log: String::new()};
@@ -94,10 +97,12 @@ impl OrderRec {
 				_ => (),
 			}
 			self.req2ord.insert(reqkey.to_string(), key.to_string());
+			return self.ords[key].back()
 		}
 		else {
-			println!("unknow toks");
+			//println!("unknow toks");
 		}
+		None
 	}
 	fn print_ord(&self, key: &str) {
 		match self.ords.get(key) {
@@ -112,9 +117,10 @@ impl OrderRec {
 							_=> println!("req {} not found", ord_reqkey),
 						}
 						reqkey = ord_reqkey.to_string();
-					}
+					};
 					reqord_list.push_back(ord);
 				}
+				println!("ordlist:{}", list.len());
 				for rec in reqord_list {
 					rec.print();
 				}
@@ -199,8 +205,11 @@ impl Parser {
 	/// 解析每一行的內容, 並儲存到HashMap
 	fn parse_line(&mut self, line: &str) {
 		let toks : Vec<String> = line.to_string().split('\x01').map(|s| s.to_string()).collect();
+
 		if toks.len() > 3 {
 			self.ord_rec.insert_rec(toks, line);
+		} else {
+			//println!("log line: {}", line);
 		}
 	}
 	
@@ -226,17 +235,20 @@ fn main() -> Result<()> {
 	let options    = Options::from_args();
 
 	let f          = File::open(options.filepath)?;
-	let reader     = BufReader::new(f);
+	let mut reader     = BufReader::new(f);
 	let mut parser = Parser::new();
-	
+
 	// 依每行解析
-	for line in reader.lines() {
-		match line {
-			Ok(ok_line)=> parser.parse_line(&ok_line),
-			_ => continue,
+	let mut line_buf   = Vec::<u8>::new();
+	while let Ok(sz_line) = reader.read_until(b'\n', &mut line_buf) {
+		if sz_line > 0 {
+			let line = String::from_utf8_lossy(&line_buf);
+			parser.parse_line(&line);
+			line_buf.clear();
+		} else {
+			break;
 		}
 	}
-	
 	// 解析完了, 顯示解析結果
 	println!("parser: {}", parser);
 	
