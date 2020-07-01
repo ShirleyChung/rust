@@ -6,6 +6,8 @@ use std::fs::File;
 use std::collections::HashMap;
 use std::collections::LinkedList;
 use std::fmt;
+use encoding::{Encoding, DecoderTrap};
+use encoding::all::BIG5_2003;
 
 /// 第一步，程式的參數接收
 #[derive(StructOpt)]
@@ -242,8 +244,10 @@ fn main() -> Result<()> {
 	let mut line_buf   = Vec::<u8>::new();
 	while let Ok(sz_line) = reader.read_until(b'\n', &mut line_buf) {
 		if sz_line > 0 {
-			let line = String::from_utf8_lossy(&line_buf);
-			parser.parse_line(&line);
+			let mut line = String::new();
+			if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Ignore, &mut line).is_ok() {
+				parser.parse_line(&line);
+			}
 			line_buf.clear();
 		} else {
 			break;
