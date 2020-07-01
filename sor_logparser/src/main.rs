@@ -8,6 +8,7 @@ use std::collections::LinkedList;
 use std::fmt;
 use encoding::{Encoding, DecoderTrap};
 use encoding::all::BIG5_2003;
+use chrono::prelude::*;
 
 /// 第一步，程式的參數接收
 #[derive(StructOpt)]
@@ -28,6 +29,16 @@ struct Rec {
 
 impl Rec {
 	fn print(&self) {
+		if self.reqs_vec.len() > 3 {
+			let ts_toks : Vec<String> = self.reqs_vec[3].split('.').map(|s| s.to_string()).collect();
+			if ts_toks.len() > 1 {
+				let u_secs = ts_toks[0].parse::<i64>().unwrap();
+				let u_ms   = ts_toks[1].parse::<i64>().unwrap();
+				let datetime: DateTime<Local> = Local.timestamp(u_secs, 0);
+				let newdate = datetime.format("%Y-%m-%d %H:%M:%S");
+    			println!("{} {}", newdate, u_ms);
+			}
+		}
 		println!("{}", self.line);
 		if !self.log.is_empty() {
 			println!("{}", self.log);
