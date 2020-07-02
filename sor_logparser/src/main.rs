@@ -39,10 +39,7 @@ impl Rec {
     			println!("{} {}", newdate, u_ms);
 			}
 		}
-		println!("{}", self.line);
-		if !self.log.is_empty() {
-			println!("{}", self.log);
-		}
+		println!("{}{}", self.line, self.log);
 	}
 }
 
@@ -81,7 +78,7 @@ impl OrderRec {
 			req2ord: HashMap::<String, String>::new(),
 		}
 	}
-	fn insert_rec(&mut self, toks: Vec<String>, line: &str ) -> Option<&Rec> {
+	fn insert_rec(&mut self, toks: Vec<String>, line: &str, log: &str) -> (&'static str, String) {
 		let key = &toks[1];
 		let hdr = &toks[0];	
 		if key == "-" { // 沒有key值的，是表格
@@ -93,11 +90,11 @@ impl OrderRec {
 			tabrec.recs = toks.to_vec();
 		}
 		else if "Req" == hdr {  // 依key將記錄儲存到hashmap中
-			self.reqs.insert(key.to_string(), Rec{reqs_vec: toks.to_vec(), line: line.to_string(), log: String::new()});
-			return Some(&self.reqs[key])
+			self.reqs.insert(key.to_string(), Rec{reqs_vec: toks.to_vec(), line: line.to_string(), log: log.to_string()});
+			return ("Req", key.to_string())
 		}
 		else if "Ord" == hdr {	
-			let rec = Rec{reqs_vec: toks.to_vec(), line: line.to_string(), log: String::new()};
+			let rec = Rec{reqs_vec: toks.to_vec(), line: line.to_string(), log: log.to_string()};
 			self.ords.entry(key.to_string()).or_insert(LinkedList::<Rec>::new()).push_back(rec);
 			// 檢查Req-Ord對應是否有覆蓋的情況
 			let reqkey = &toks[4];
@@ -110,12 +107,12 @@ impl OrderRec {
 				_ => (),
 			}
 			self.req2ord.insert(reqkey.to_string(), key.to_string());
-			return self.ords[key].back()
+			return ("Ord", key.to_string())
 		}
 		else {
 			//println!("unknow toks");
 		}
-		None
+		("", "".to_string())
 	}
 	fn print_ord(&self, key: &str) {
 		match self.ords.get(key) {
@@ -205,6 +202,7 @@ impl OrderRec {
 /// 儲存解析後的陣列
 struct Parser {
 	ord_rec : OrderRec,
+	prevkey : (&'static str, String)
 }
 
 /// 陣列的操作函式
@@ -212,15 +210,16 @@ impl Parser {
 	fn new()->Parser {
 		Parser{ 
 			ord_rec: OrderRec::new(),
+			prevkey: ("", "".to_string()),
 		}
 	}
 
 	/// 解析每一行的內容, 並儲存到HashMap
-	fn parse_line(&mut self, line: &str) {
+	fn parse_line(&mut self, line: &str, log: &str) {
 		let toks : Vec<String> = line.to_string().split('\x01').map(|s| s.to_string()).collect();
 
 		if toks.len() > 3 {
-			self.ord_rec.insert_rec(toks, line);
+			self.prevkey = self.ord_rec.insert_rec(toks, line, log);
 		} else {
 			//println!("log line: {}", line);
 		}
@@ -241,29 +240,92 @@ impl fmt::Display for Parser {
 			self.ord_rec.tables.len(), self.ord_rec.reqs.len(), self.ord_rec.ords.len())
 	}
 }
-
+/*
+fn read_data_log(reader: &mut BufReader, parser: &mut Parser) -> Result<()> {
+	let mut line_buf   = Vec::<u8>::new();
+	// 讀第一行
+	if reader.read_until(b'\n', &mut line_buf).is_ok() {
+		let mut line = String::new();
+		if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Ignore, &mut line).is_ok() {
+			line_buf.clear();
+			// 讀第二行
+			if reader.read_until(b'\n', &mut line_buf).is_ok() {
+				let mut log = String::new();
+				if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Ignore, &mut log).is_ok() {
+					// 第二行是LOG
+					if log.as_bytes()[0] == ':' as u8 {
+						parser.parse_line(&line, &log);
+					} else { // 否則是另一筆ReqOrd
+						parser.parse_line(&line, "");
+						parser.parse_line(&log, "");					
+					}
+				} else { // 第二行Decode失敗, 仍要parse第一行
+					parser.parse_line(&line, "");
+				}			
+				return Ok(()) // 繼續往下讀
+			}
+			// 讀不到第二行, 代表已到EOF
+			parser.parse_line(&line, "");
+		}		
+	}
+	Err(());
+}
+*/
 /// 第一參數指定檔案
 /// 將其讀入陣列以便解析
 fn main() -> Result<()> {
 	let options    = Options::from_args();
 
-	let f          = File::open(options.filepath)?;
-	let mut reader     = BufReader::new(f);
+	let f           = File::open(options.filepath)?;
+	let mut reader = BufReader::new(f);
 	let mut parser = Parser::new();
 
+/*
 	// 依每行解析
 	let mut line_buf   = Vec::<u8>::new();
 	while let Ok(sz_line) = reader.read_until(b'\n', &mut line_buf) {
 		if sz_line > 0 {
 			let mut line = String::new();
 			if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Ignore, &mut line).is_ok() {
-				parser.parse_line(&line);
+				parser.parse_line(&line, "");
 			}
 			line_buf.clear();
 		} else {
 			break;
 		}
 	}
+*/
+	let mut line_buf   = Vec::<u8>::new();
+	loop {
+		// 讀第一行
+		line_buf.clear();
+		if reader.read_until(b'\n', &mut line_buf).is_ok() {
+			let mut line = String::new();
+			if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Ignore, &mut line).is_ok() && line.len() > 0 {
+				// 讀第二行
+				line_buf.clear();
+				if reader.read_until(b'\n', &mut line_buf).is_ok() {
+					let mut log = String::new();
+					if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Ignore, &mut log).is_ok() && log.len() > 0 {
+						// 第二行是LOG
+						if log.as_bytes()[0] == ':' as u8 {
+							parser.parse_line(&line, &log);
+						} else { // 否則是另一筆ReqOrd
+							parser.parse_line(&line, "");
+							parser.parse_line(&log, "");					
+						}
+					} else { // 第二行Decode失敗, 仍要parse第一行
+						parser.parse_line(&line, "-=LOG decode failed=-");
+					}			
+					continue; // 繼續往下讀
+				}
+				// 讀不到第二行, 代表已到EOF
+				parser.parse_line(&line, "");
+			}
+		}
+		break;
+	}
+
 	// 解析完了, 顯示解析結果
 	println!("parser: {}", parser);
 	
