@@ -10,7 +10,10 @@ use encoding::{Encoding, DecoderTrap};
 use encoding::all::BIG5_2003;
 use chrono::prelude::*;
 
-/// 第一步，程式的參數接收
+/// SorReqOrd Parser
+/// 可從檔案中, 取得與指定欄位值相符的記錄
+
+// 1.參數取得
 #[derive(StructOpt)]
 struct Options {
 	/// 要解析的SorReqOrd.log
@@ -20,7 +23,7 @@ struct Options {
 	field   : String,
 }
 
-/// 第二步，定義儲存的資料結構
+// 2. 資料結構
 struct Rec {
 	reqs_vec: Vec<String>,
 	line    : String,
@@ -69,6 +72,7 @@ struct OrderRec {
 	req2ord: HashMap<String, String>,   // req對應到的ord
 }
 
+// 3. ReqOrd資料的輸入與輸出
 impl OrderRec {
 	fn new() -> OrderRec {
 		OrderRec {
@@ -199,7 +203,7 @@ impl OrderRec {
 	}
 }
 
-/// 儲存解析後的陣列
+// 4. 解析管理
 struct Parser {
 	ord_rec : OrderRec,
 	prevkey : (&'static str, String)
@@ -240,48 +244,10 @@ impl fmt::Display for Parser {
 			self.ord_rec.tables.len(), self.ord_rec.reqs.len(), self.ord_rec.ords.len())
 	}
 }
-/*
-fn read_data_log(reader: &mut BufReader, parser: &mut Parser) -> Result<()> {
-	let mut line_buf   = Vec::<u8>::new();
-	// 讀第一行
-	if reader.read_until(b'\n', &mut line_buf).is_ok() {
-		let mut line = String::new();
-		if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Ignore, &mut line).is_ok() {
-			line_buf.clear();
-			// 讀第二行
-			if reader.read_until(b'\n', &mut line_buf).is_ok() {
-				let mut log = String::new();
-				if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Ignore, &mut log).is_ok() {
-					// 第二行是LOG
-					if log.as_bytes()[0] == ':' as u8 {
-						parser.parse_line(&line, &log);
-					} else { // 否則是另一筆ReqOrd
-						parser.parse_line(&line, "");
-						parser.parse_line(&log, "");					
-					}
-				} else { // 第二行Decode失敗, 仍要parse第一行
-					parser.parse_line(&line, "");
-				}			
-				return Ok(()) // 繼續往下讀
-			}
-			// 讀不到第二行, 代表已到EOF
-			parser.parse_line(&line, "");
-		}		
-	}
-	Err(());
-}
-*/
-/// 第一參數指定檔案
-/// 將其讀入陣列以便解析
-fn main() -> Result<()> {
-	let options    = Options::from_args();
 
-	let f           = File::open(options.filepath)?;
-	let mut reader = BufReader::new(f);
-	let mut parser = Parser::new();
-
-/*
-	// 依每行解析
+/// line by line 解析
+#[allow(dead_code)]
+fn read_data<R: Read>(reader: &mut BufReader<R>, parser: &mut Parser) {
 	let mut line_buf   = Vec::<u8>::new();
 	while let Ok(sz_line) = reader.read_until(b'\n', &mut line_buf) {
 		if sz_line > 0 {
@@ -294,19 +260,22 @@ fn main() -> Result<()> {
 			break;
 		}
 	}
-*/
+}
+
+/// line by line with log 解析
+fn read_data_log<R: Read>(reader: &mut BufReader<R>, parser: &mut Parser) {
 	let mut line_buf   = Vec::<u8>::new();
 	loop {
 		// 讀第一行
 		line_buf.clear();
 		if reader.read_until(b'\n', &mut line_buf).is_ok() {
 			let mut line = String::new();
-			if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Ignore, &mut line).is_ok() && line.len() > 0 {
+			if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Strict, &mut line).is_ok() && line.len() > 0 {
 				// 讀第二行
 				line_buf.clear();
 				if reader.read_until(b'\n', &mut line_buf).is_ok() {
 					let mut log = String::new();
-					if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Ignore, &mut log).is_ok() && log.len() > 0 {
+					if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Strict, &mut log).is_ok() && log.len() > 0 {
 						// 第二行是LOG
 						if log.as_bytes()[0] == ':' as u8 {
 							parser.parse_line(&line, &log);
@@ -315,16 +284,33 @@ fn main() -> Result<()> {
 							parser.parse_line(&log, "");					
 						}
 					} else { // 第二行Decode失敗, 仍要parse第一行
-						parser.parse_line(&line, "-=LOG decode failed=-");
+						parser.parse_line(&line, &String::from_utf8_lossy(&line_buf));
 					}			
 					continue; // 繼續往下讀
 				}
 				// 讀不到第二行, 代表已到EOF
 				parser.parse_line(&line, "");
 			}
+			else {
+				parser.parse_line(&String::from_utf8_lossy(&line_buf), "");			
+			}
 		}
 		break;
 	}
+}
+
+/// 第一參數指定檔案
+/// 將其讀入陣列以便解析
+fn main() -> Result<()> {
+	let options    = Options::from_args();
+
+	let f           = File::open(options.filepath)?;
+	let mut reader = BufReader::new(f);
+	let mut parser = Parser::new();
+
+
+	// 依每行解析
+	read_data_log(&mut reader, &mut parser);
 
 	// 解析完了, 顯示解析結果
 	println!("parser: {}", parser);
