@@ -42,7 +42,7 @@ impl Rec {
     			println!("{} {}", newdate, u_ms);
 			}
 		}
-		println!("{}{}", self.line, self.log);
+		println!("{}\n{}\n", self.line, self.log);
 	}
 }
 
@@ -134,7 +134,7 @@ impl OrderRec {
 					};
 					reqord_list.push_back(ord);
 				}
-				println!("ordlist:{}", list.len());
+				println!("--== ordkey:{} ==--", key);
 				for rec in reqord_list {
 					rec.print();
 				}
@@ -262,41 +262,69 @@ fn read_data<R: Read>(reader: &mut BufReader<R>, parser: &mut Parser) {
 	}
 }
 
+enum LineType<T> {
+	EndOfFile,
+	Rec(T),
+	Log(T),
+	Empty,
+}
+
+/// get line from reader
+#[allow(dead_code)]
+fn get_reader_line<R: Read>(reader: &mut BufReader<R>) -> LineType<String> {
+	let mut line_buf = Vec::<u8>::new();
+	let mut line = String::new();
+	// 讀第一行
+	line_buf.clear();
+	match reader.read_until(b'\n', &mut line_buf) {
+		Ok(sz_line) => {
+			if sz_line == 0 {
+				return LineType::EndOfFile;
+			}
+			if !BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Strict, &mut line).is_ok() {
+				line = String::from_utf8_lossy(&line_buf).to_string();
+			}
+			line = line.trim().to_string();
+			if sz_line < 2 || line.len() < 2 {
+				return LineType::Empty;
+			}
+			if line.as_bytes()[0] == ':' as u8 {
+				LineType::Log(line)
+			} else {
+				LineType::Rec(line)
+			}
+		},
+		Err(_)=> LineType::EndOfFile,
+	}
+}
+
 /// line by line with log 解析
 fn read_data_log<R: Read>(reader: &mut BufReader<R>, parser: &mut Parser) {
-	let mut line_buf   = Vec::<u8>::new();
+	let mut str_tmp: Option<String> = None;
 	loop {
-		// 讀第一行
-		line_buf.clear();
-		if reader.read_until(b'\n', &mut line_buf).is_ok() {
-			let mut line = String::new();
-			if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Strict, &mut line).is_ok() && line.len() > 0 {
-				// 讀第二行
-				line_buf.clear();
-				if reader.read_until(b'\n', &mut line_buf).is_ok() {
-					let mut log = String::new();
-					if BIG5_2003.decode_to(&mut line_buf, DecoderTrap::Strict, &mut log).is_ok() && log.len() > 0 {
-						// 第二行是LOG
-						if log.as_bytes()[0] == ':' as u8 {
-							parser.parse_line(&line, &log);
-						} else { // 否則是另一筆ReqOrd
-							parser.parse_line(&line, "");
-							parser.parse_line(&log, "");					
-						}
-					} else { // 第二行Decode失敗, 仍要parse第一行
-						parser.parse_line(&line, &String::from_utf8_lossy(&line_buf));
-					}			
-					continue; // 繼續往下讀
-				}
-				// 讀不到第二行, 代表已到EOF
-				parser.parse_line(&line, "");
-			}
-			else {
-				parser.parse_line(&String::from_utf8_lossy(&line_buf), "");			
-			}
-		}
-		break;
-	}
+		match get_reader_line(reader) {
+			LineType::Rec(line) => {
+				match str_tmp {
+					Some(rec) => parser.parse_line(&rec, ""),
+					None      => (),
+				};
+				str_tmp = Some(line);
+			},
+			LineType::Log(log) => {
+				match str_tmp {
+					Some(rec) => parser.parse_line(&rec, &log),
+					None => (),
+				};
+				str_tmp = None;
+			},
+			LineType::Empty     =>  continue,
+			LineType::EndOfFile =>  break,
+		};
+	};
+	match str_tmp {
+		Some(rec) => parser.parse_line(&rec, ""),
+		None      => (),
+	};
 }
 
 /// 第一參數指定檔案
@@ -304,7 +332,7 @@ fn read_data_log<R: Read>(reader: &mut BufReader<R>, parser: &mut Parser) {
 fn main() -> Result<()> {
 	let options    = Options::from_args();
 
-	let f           = File::open(options.filepath)?;
+	let f          = File::open(options.filepath)?;
 	let mut reader = BufReader::new(f);
 	let mut parser = Parser::new();
 
