@@ -21,6 +21,9 @@ struct Options {
 	/// 指定TableName:FieldName:SearchValue; 例如 -f TwsNew:SorRID:100001
 	#[structopt(short="f", long="field", default_value = "")]
 	field   : String,
+	/// SorReqOrd.log 檔案編碼格式, 預設BIG5
+	#[structopt(short="e", long="encoding", default_value = "BIG5")]
+	encoding: String,
 }
 
 /// 第一參數指定檔案
@@ -32,9 +35,8 @@ fn main() -> Result<()> {
 	let mut reader = BufReader::new(f);
 	let mut parser = Parser::new();
 
-
 	// 依每行解析
-	read_data_log(&mut reader, &mut parser);
+	read_data_log(&mut reader, &mut parser, &options.encoding);
 
 	// 解析完了, 顯示解析結果
 	println!("parser: {}", parser);
