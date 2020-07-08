@@ -19,10 +19,13 @@ impl Rec {
 				let u_ms   = ts_toks[1].parse::<i64>().unwrap();
 				let datetime: DateTime<Local> = Local.timestamp(u_secs, 0);
 				let newdate = datetime.format("%Y-%m-%d %H:%M:%S");
+				if &self.reqs_vec[0] == "Req" {
+					println!("");
+				}
     			println!("{} {}", newdate, u_ms);
 			}
 		}
-		println!("{}\n{}\n", self.line, self.log);
+		println!("{}\n{}", self.line, self.log);
 	}
 }
 
