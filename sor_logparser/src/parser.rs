@@ -41,6 +41,12 @@ impl TableRec {
 			recs : Vec::<String>::new(),
 		}
 	}
+	pub fn print(&self) {
+		for rec in &self.recs {
+			print!("{} ", rec);
+		}
+		println!("");
+	}
 }
 
 type ReqRecMap   = HashMap<String, Rec>;            // ReqKey-Rec
@@ -172,6 +178,7 @@ impl OrderRec {
 
 	pub fn check_req_data(&self, table_name: &str, field_name: &str, search_target: &str) {
 		println!("checking {}, {}", field_name, search_target);
+		self.tables[table_name].print();
 		match self.tables.get(table_name) {
 			Some(tabrec) => { 
 				match tabrec.index.get(field_name) {
