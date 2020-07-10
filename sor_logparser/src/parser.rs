@@ -105,10 +105,11 @@ impl OrderRec {
 		}
 		("", "".to_string())
 	}
-	pub fn print_ord(&self, key: &str) {
+	#[allow(dead_code)]
+	pub fn get_target_ordlist(&self, key: &str) -> LinkedList<&Rec> {
+		let mut reqord_list = LinkedList::<&Rec>::new();
 		match self.ords.get(key) {
 			Some(list) => {
-				let mut reqord_list = LinkedList::<&Rec>::new();
 				let mut reqkey: String = String::from("");
 				for ord in list {
 					let ord_reqkey = &ord.reqs_vec[4];
@@ -121,13 +122,15 @@ impl OrderRec {
 					};
 					reqord_list.push_back(ord);
 				}
-				println!("--== ordkey:{} ==--", key);
-				for rec in reqord_list {
-					rec.print();
-				}
 			},
-			_=> println!("order {} not exist", key),
+			_=> (),
 		};
+		reqord_list
+	}
+	pub fn print_ord(&self, key: &str) {
+		for rec in self.get_target_ordlist(key) {
+			rec.print();
+		}
 	}
 	/// 以index, 找出ords中相等於target的rec
 	pub fn find_req(&self, table_name: &str, key_index: usize, target: &str) {
@@ -178,7 +181,9 @@ impl OrderRec {
 
 	pub fn check_req_data(&self, table_name: &str, field_name: &str, search_target: &str) {
 		println!("checking {}, {}", field_name, search_target);
-		self.tables[table_name].print();
+		for (_, tab) in &self.tables {
+			tab.print();
+		}
 		match self.tables.get(table_name) {
 			Some(tabrec) => { 
 				match tabrec.index.get(field_name) {
