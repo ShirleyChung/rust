@@ -59,6 +59,25 @@ pub struct OrderRec {
 	req2ord: HashMap<String, String>,   // req對應到的ord
 }
 
+pub struct OrdInfo {
+	rid   : String,
+	ordno : String,
+	status: String,
+}
+
+impl OrdInfo {
+	pub fn new() -> OrdInfo {
+		OrdInfo {
+			rid   : String::new(),
+			ordno : String::new(),
+			status: String::new(),
+		}
+	}
+	pub fn to_string(&self) -> String {
+		String::from("流水號:") + &self.rid + " 委託書號:" + &self.ordno + " 最後狀態:" + &self.status
+	}
+}
+
 // 3. ReqOrd資料的輸入與輸出
 impl OrderRec {
 	pub fn new() -> OrderRec {
@@ -105,7 +124,7 @@ impl OrderRec {
 		}
 		("", "".to_string())
 	}
-	#[allow(dead_code)]
+	/// 取得 指定Ord key 的 ReqOrd 的 LinkedList
 	pub fn get_target_ordlist(&self, key: &str) -> LinkedList<&Rec> {
 		let mut reqord_list = LinkedList::<&Rec>::new();
 		match self.ords.get(key) {
@@ -127,8 +146,38 @@ impl OrderRec {
 		};
 		reqord_list
 	}
+	/// 取得該記錄中，指定欄位的值
+	fn get_value(&self, rec: &Rec, field_name: &str) -> String {
+		match self.tables.get(&rec.reqs_vec[2]) {
+			Some(tabrec) => { 
+				match tabrec.index.get(field_name) {
+					Some(idx) => {
+						return rec.reqs_vec[*idx].to_string();
+					},
+					_=> return String::new(),
+				};
+			},
+			_=> return String::new(),
+		};
+	}
+	/// 取得該筆LinkedList的彙總說明
+	fn get_ordlist_info(&self, list: &LinkedList<&Rec>) -> OrdInfo {
+		let mut info = OrdInfo::new();
+		for rec in list {
+			if rec.reqs_vec[0] == "Req" && rec.reqs_vec[4] == "1" { // 若是新單要求，則取流水號
+				info.rid = self.get_value(rec, "SorRID");
+			}
+			if rec.reqs_vec[0] == "Ord" {
+				info.ordno = self.get_value(rec, "OrdNo");
+			}
+		}
+		info
+	}
+	/// 印出指定 Ord Ley
 	pub fn print_ord(&self, key: &str) {
-		for rec in self.get_target_ordlist(key) {
+		let list = &self.get_target_ordlist(key);
+		println!("{}", self.get_ordlist_info(list).to_string() );
+		for rec in list {
 			rec.print();
 		}
 	}
