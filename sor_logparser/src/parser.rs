@@ -258,6 +258,7 @@ impl OrderRec {
 // 4. 解析管理
 pub struct Parser {
 	ord_rec : OrderRec,
+	info    : String,
 	prevkey : (&'static str, String)
 }
 
@@ -266,7 +267,35 @@ impl Parser {
 	pub fn new()->Parser {
 		Parser{ 
 			ord_rec: OrderRec::new(),
+			info   : String::new(),
 			prevkey: ("", "".to_string()),
+		}
+	}
+
+	///取得統計資訊
+	pub fn get_info(&mut self) -> &str {
+		if self.info.is_empty() {
+			let mut deals = 0;
+			let mut fails = 0;
+			// 掃描req列表，統計
+			for (_, req) in &self.ord_rec.reqs {
+				if req.reqs_vec[4] == "10" || req.reqs_vec[4] == "11" {
+					deals = deals + 1;
+				}
+			}
+			// 掃描req列表，統計
+			for (_, ord) in &self.ord_rec.ords {
+				if ord.back().unwrap().reqs_vec[7] == "99" {
+					fails = fails + 1;
+				}
+			}
+			self.info = format!("tables:\t{}\nreqs:\t{}\nords:\t{}\ndeals:\t{}\nfailed:\t{}\n", 
+				self.ord_rec.tables.len(), self.ord_rec.reqs.len(), self.ord_rec.ords.len(),
+				deals, fails);
+			&self.info
+		}
+		else {
+			&self.info
 		}
 	}
 

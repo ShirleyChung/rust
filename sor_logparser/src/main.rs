@@ -39,7 +39,7 @@ fn main() -> Result<()> {
 	read_data_log(&mut reader, &mut parser, &options.encoding);
 
 	// 解析完了, 顯示解析結果
-	println!("parser: {}", parser);
+	println!("-=summary=-\n{}", parser.get_info());
 	
 	// 搜尋指定的目標
 	let field_vec :Vec<String> = options.field.split(':').map(|s| s.to_string()).collect();
