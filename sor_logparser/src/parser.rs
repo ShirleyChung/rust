@@ -46,8 +46,8 @@ impl Rec {
 			if self.is_req() {
 				let type_key = &self.reqs_vec[4][..];
 				let ord_type: &str = match type_key
-				{ "1" => "新單", "2" => "改量", "3" => "改價", "4" => "刪單", _=> "" };
-				println!("\n{} ({})", self.get_timestamp(), ord_type);
+				{ "1" => "新單", "2" => "改量", "3" => "改價", "4" => "刪單", "10" =>"成交", _=> "" };
+				println!("{} ({})", self.get_timestamp(), ord_type);
 			} 
 			else {
 				let ordst = self.reqs_vec[6].parse::<i32>().unwrap();
@@ -103,7 +103,7 @@ impl OrdInfo {
 		}
 	}
 	pub fn to_string(&self) -> String {
-		String::from("流水號:") + &self.rid + " 委託書號:" + &self.ordno + " 最後狀態:" + &self.status
+		String::from("\n===== 流水號:") + &self.rid + " 委託書號:" + &self.ordno + " 最後狀態:" + &self.status + " ====="
 	}
 }
 
