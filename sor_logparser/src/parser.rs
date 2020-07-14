@@ -10,19 +10,48 @@ pub struct Rec {
 	log     : String,
 }
 
+fn get_ordst(st: i32) -> String {
+	match st {
+		6 => "委託傳送中".to_string(),
+		7 => "委託已傳送".to_string(),
+		90=> "委託成功".to_string(),
+		99 => "委託失敗".to_string(),
+		101 => "交易所已接受".to_string(),
+		110 => "部份成交".to_string(),
+		111 => "全部成交".to_string(),
+		120 => "交易所取消".to_string(),
+		_ => "".to_string(),
+	}
+}
+
+// Rec具有print的操作, 可將timestamp印出
 impl Rec {
-	pub fn print(&self) {
+	pub fn is_req(&self) -> bool {
+		&self.reqs_vec[0] == "Req"
+	}
+	pub fn get_timestamp(&self) -> String {
+		let mut dt = String::new();
 		if self.reqs_vec.len() > 3 {
 			let ts_toks : Vec<String> = self.reqs_vec[3].split('.').map(|s| s.to_string()).collect();
 			if ts_toks.len() > 1 {
 				let u_secs = ts_toks[0].parse::<i64>().unwrap();
-				let u_ms   = ts_toks[1].parse::<i64>().unwrap();
 				let datetime: DateTime<Local> = Local.timestamp(u_secs, 0);
-				let newdate = datetime.format("%Y-%m-%d %H:%M:%S");
-				if &self.reqs_vec[0] == "Req" {
-					println!("");
-				}
-    			println!("{} {}", newdate, u_ms);
+				dt = datetime.format("%Y-%m-%d %H:%M:%S:").to_string() + &ts_toks[1];
+			}
+		}
+		dt
+	}
+	pub fn print(&self) {
+		if self.reqs_vec.len() > 5 {
+			if self.is_req() {
+				let type_key = &self.reqs_vec[4][..];
+				let ord_type: &str = match type_key
+				{ "1" => "新單", "2" => "改量", "3" => "改價", "4" => "刪單", _=> "" };
+				println!("\n{} ({})", self.get_timestamp(), ord_type);
+			} 
+			else {
+				let ordst = self.reqs_vec[6].parse::<i32>().unwrap();
+				println!("{} =>{}", self.get_timestamp(), get_ordst(ordst));
 			}
 		}
 		println!("{}\n{}", self.line, self.log);
@@ -161,22 +190,30 @@ impl OrderRec {
 		};
 	}
 	/// 取得該筆LinkedList的彙總說明
-	fn get_ordlist_info(&self, list: &LinkedList<&Rec>) -> OrdInfo {
+	fn get_ord_summary(&self, list: &LinkedList<&Rec>) -> OrdInfo {
 		let mut info = OrdInfo::new();
+		let mut ordst :i32 = 0;
+		//let mut reqst :i32 = 0;
 		for rec in list {
 			if rec.reqs_vec[0] == "Req" && rec.reqs_vec[4] == "1" { // 若是新單要求，則取流水號
 				info.rid = self.get_value(rec, "SorRID");
+				//reqst = rec.reqs_vec[6].parse::<i32>().unwrap();
 			}
 			if rec.reqs_vec[0] == "Ord" {
 				info.ordno = self.get_value(rec, "OrdNo");
+				let rec_ordst = rec.reqs_vec[7].parse::<i32>().unwrap();
+				if rec_ordst > ordst {
+					ordst = rec_ordst;
+				}
 			}
 		}
+		info.status = get_ordst(ordst);
 		info
 	}
-	/// 印出指定 Ord Ley
+	/// 印出指定 Ord Key 的 彙總以及 所有Log; 每筆Log會有timestamp
 	pub fn print_ord(&self, key: &str) {
 		let list = &self.get_target_ordlist(key);
-		println!("{}", self.get_ordlist_info(list).to_string() );
+		println!("{}", self.get_ord_summary(list).to_string() );
 		for rec in list {
 			rec.print();
 		}
