@@ -50,8 +50,11 @@ impl Rec {
 				println!("{} ({})", self.get_timestamp(), ord_type);
 			} 
 			else {
-				let ordst = self.reqs_vec[6].parse::<i32>().unwrap();
-				println!("{} =>{}", self.get_timestamp(), get_ordst(ordst));
+				if let Ok(st) = self.reqs_vec[6].parse::<i32>() {
+					println!("{} =>{}", self.get_timestamp(), get_ordst(st));
+				} else {
+					println!("{}", self.get_timestamp());
+				}
 			}
 		}
 		println!("{}\n{}", self.line, self.log);
@@ -201,9 +204,10 @@ impl OrderRec {
 			}
 			if rec.reqs_vec[0] == "Ord" {
 				info.ordno = self.get_value(rec, "OrdNo");
-				let rec_ordst = rec.reqs_vec[7].parse::<i32>().unwrap();
-				if rec_ordst > ordst {
-					ordst = rec_ordst;
+				if let Ok(st) = rec.reqs_vec[7].parse::<i32>() {
+					if st > ordst {
+						ordst = st;
+					}
 				}
 			}
 		}
